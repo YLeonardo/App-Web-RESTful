@@ -1,0 +1,371 @@
+﻿<!DOCTYPE html>
+<html>
+	<head>
+		<title>Tarea 7-Sistema De Comercio Electrónico</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" charset="utf-8">
+		<meta name="author" content="Tarea 7">
+		<!-- Bootstrap CSS -->
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+		<!-- Iconos fontawesome -->
+		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.4.1/css/all.css" integrity="sha384-5sAR7xN1Nv6T6+dT2mhtzEpVJvfS3NScPQTrOxhwjIuvcA67KV2R5Jz6kr4abQsz" crossorigin="anonymous">
+ 		<script src='/WSClient.js'></script>
+		<!-- Alertas responsivas -->
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@10.10.1/dist/sweetalert2.all.min.js"></script>
+	    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/sweetalert2@10.10.1/dist/sweetalert2.min.css'>
+
+		<script>
+			var URL = "/Servicio/rest/ws";
+
+			var foto = null;  // por default la foto es nula
+			function get(id)
+			{
+				return document.getElementById(id);
+			}
+			function muestra(id)
+			{
+				get(id).style.display = "block";
+			}
+
+			function oculta(id)
+			{
+				get(id).style.display = "none";
+			}
+			function muestra_pantalla(id)
+			{
+				oculta("menu");
+				muestra(id);
+			}
+			function oculta_pantalla(id)
+			{
+				oculta(id);
+				muestra("menu");
+			}
+			function readSingleFile(files,imagen)
+			{
+				var file = files[0];
+				if (!file) return;
+				var reader = new FileReader();
+				reader.onload = function(e)
+				{
+					imagen.src = reader.result;
+					// reader.result incluye al principio: "data:image/jpeg;base64,"
+					foto = reader.result.split(',')[1];
+				};
+				reader.readAsDataURL(file);
+			}
+
+			//FUNCIONES ALTA
+			function limpia_alta()
+			{
+				get("alta_nombre").value = "";
+				get("alta_descripcion").value = "";
+				get("alta_precio").value = "";
+				get("alta_cantidad").value = "";
+				get("alta_imagen").src = "/agregar_producto.png";
+				foto = null;
+			}
+			function alta()
+			{
+				var producto = new WSClient(URL);
+				var articulo =
+				{
+					nombre: get("alta_nombre").value,
+					descripcion: get("alta_descripcion").value,
+					precio: get("alta_precio").value,
+					cantidad: get("alta_cantidad").value,
+					foto: foto
+				};
+				producto.postJson("alta_articulo",
+				{
+					articulo: articulo
+				},
+				function(code,result)
+				{
+					if (code == 200){
+						limpia_alta();
+						Swal.fire("El artículo se capturó correctamente", "", "success");
+					}
+					else
+						var error = JSON.parse(JSON.stringify(result));
+						Swal.fire(error.message, "El artículo no se creó", "error");
+				});
+			}
+
+			//FUNCIONES CONSULTA ARTÍCULO
+			function limpia_consulta()
+			{
+				get("consulta_nombre").value = "";
+				get("consulta_descripcion").value = "";
+			}
+			function cierra_consulta_articulo()
+			{
+				oculta_pantalla('consulta_articulo');
+				muestra("menu");
+				get("consulta_nombre").readOnly = false;
+				get("consulta_descripcion").readOnly = false;
+			}
+			function consulta_articulo()
+			{
+				var producto = new WSClient(URL);
+				producto.postJson("consulta_articulo",
+				{
+					nombre: get("consulta_nombre").value,
+					descripcion: get("consulta_descripcion").value
+				},
+				function(code,result)
+				{
+					if (code == 200)
+					{
+						//Lugar donde se pone la respuesta de consulta
+
+						limpia_consulta();
+						muestra("compra_articulo");
+
+						var html="";
+						for (var i = 0; i < result.length; i++) {
+						html=html+"<p>" + result[i].option + "</p>";
+						}
+						document.getElementById("compra_articulo").innerHTML=html;
+						/* get("compra_nombre").value = result.nombre;
+						get("compra_descripcion").value = result.descripcion;
+						get("compra_precio").value = result.precio;
+						get("compra_cantidad").value = result.cantidad;
+						foto = result.foto;
+                        get("compra_imagen").src = foto != null ? "data:image/jpeg;base64," + foto : "/agregar_producto.png" */
+
+						get("consulta_nombre").readOnly = true;
+						get("consulta_descripcion").readOnly = true;
+					}
+					else
+						// el objeto "result" es de tipo Error
+						var error = JSON.parse(JSON.stringify(result));
+						Swal.fire(error.message, "No se encontró algúna coincidencia", "error");
+				});
+			}
+			function quita_foto()
+			{
+				foto=null;
+				get('consulta_imagen').src='usuario_sin_foto.png';
+				get('consulta_file').value='';
+			}
+
+			
+
+
+			function modifica()
+			{
+				var cliente = new WSClient(URL);
+				var usuario =
+				{
+					email: get("consulta_email").value,
+					nombre: get("consulta_nombre").value,
+					apellido_paterno: get("consulta_apellido_paterno").value,
+					apellido_materno: get("consulta_apellido_materno").value != "" ? get("consulta_apellido_materno").value : null,
+					fecha_nacimiento: get("consulta_fecha_nacimiento").value != "" ? new Date(get("consulta_fecha_nacimiento").value).toISOString() : null,
+					telefono: get("consulta_telefono").value != "" ? get("consulta_telefono").value : null,
+					genero: get("consulta_genero").value == "Masculino" ? "M" : get("consulta_genero").value == "Femenino" ? "F" : null,
+					foto: foto
+				};
+				cliente.postJson("modifica_usuario",
+				{
+					usuario: usuario
+				},
+				function(code,result)
+				{
+					if (code == 200)
+						alert("OK");
+					else
+						alert(JSON.stringify(result));
+				});
+			}
+			function limpia_borra()
+			{
+				get("borra_email").value = "";
+			}
+			function borra()
+			{
+				var client = new WSClient(URL);
+				client.postJson("borra_usuario",
+				{
+					email: get("borra_email").value
+				},
+				function(code,result)
+				{
+					if (code == 200)
+						alert("OK");
+					else
+						alert(JSON.stringify(result));
+				});
+			}
+		</script>
+	</head>
+	<body>
+
+		<!-- ALTA DE ARTÍCULO-->
+		<div id="alta_articulo" style="display:none" class="form-group">
+			<header>
+				<nav class="navbar navbar-dark bg-dark">
+					<span class="text-white navbar-xl-brand mb-0 h1"> Comercio Electrónico</span>
+					<div class="d-flex justify-content-end">
+					<button class="btn btn-primary" type="button" onclick="limpia_alta();oculta_pantalla('alta_articulo');muestra_pantalla('menu')"><i class="fas fa-store"></i> Inicio</button>&nbsp;
+					<button class="btn btn-primary" type="button" onclick="limpia_alta();muestra_pantalla('alta_articulo')"><i class="fas fa-upload"></i> Captura de artículo</button>&nbsp;
+					<button class="btn btn-primary" type="button" onclick="limpia_consulta();oculta_pantalla('alta_articulo');muestra_pantalla('consulta_articulo')"><i class="fas fa-shopping-bag"></i> Compra de artículos</button>&nbsp;
+					<button class="btn btn-primary" type="button" onclick="limpia_consulta();oculta_pantalla('alta_articulo');muestra_pantalla('comprar')"><i class="fas fa-shopping-cart"></i> Artículos en el carrito</button>
+					</div>
+				  </nav>
+			</header>
+
+			<div class="container">
+				<br>
+			<h2 style="text-align:center">Captura de artículos</h2><br>
+			Nombre *<br>
+			<input class="form-control" type="text" id="alta_nombre" value=""/><br>
+			Descripción *<br>
+			<input class="form-control" type="text" id="alta_descripcion" value=""/><br>
+			Precio *<br>
+			<input class="form-control" type="text" id="alta_precio" value="" /><br>
+			Cantidad *<br>
+			<input class="form-control" type="text" id="alta_cantidad" value=""/>
+			<br>
+			<br>
+			<img class="col-sm-2" id="alta_imagen" src="/agregar_producto.png" alt="Agregar producto"></img><br><br>
+			<input  class="form-control-lg-file col-auto" type="file" onchange="readSingleFile(files,get('alta_imagen'))" multiple="false" accept="image/*"/><br>
+			<br>
+			
+			<div class="container">
+				<div class="row justify-content-end">
+					<button class="btn btn-primary col-lg-2" type="button" onclick="alta()">Agregar artículo</button>&nbsp;&nbsp;
+					<button class="btn btn-primary col-lg-2" type="button" onclick="limpia_alta()">Limpiar pantalla</button>&nbsp;&nbsp;
+					<button class="btn btn-info col-lg-2" type="button" onclick="oculta_pantalla('alta_articulo')"><i class="fas fa-reply"></i> Regresar</button>&nbsp;
+				</div>
+			</div>
+			</div>
+			<br><br><br><br>
+			<footer class="bg-dark text-center text-lg-start">
+				<!-- Copyright -->
+				<div class="text-center text-white p-3">
+				  © 2022:
+				  <span class="text-white"><strong></strong></span>
+				</div>
+				<!-- Copyright -->
+			</footer>
+			
+		</div>
+
+		<!-- CONSULTA DE ARTÍCULO-->
+		<div id="consulta_articulo" style="display:none">
+			<header>
+				<nav class="navbar navbar-dark bg-dark">
+					<span class="text-white navbar-xl-brand mb-0 h1"> Comercio Electrónico</span>
+					<div class="d-flex justify-content-end">
+					<button class="btn btn-primary" type="button" onclick="limpia_consulta();oculta_pantalla('consulta_articulo');muestra_pantalla('menu')"><i class="fas fa-store"></i> Inicio</button>&nbsp;
+					<button class="btn btn-primary" type="button" onclick="limpia_alta();oculta_pantalla('consulta_articulo');muestra_pantalla('alta_articulo')"><i class="fas fa-upload"></i> Captura de artículo</button>&nbsp;
+					<button class="btn btn-primary" type="button" onclick="limpia_consulta();muestra_pantalla('consulta_articulo')"><i class="fas fa-shopping-bag"></i> Compra de artículos</button>&nbsp;
+					<button class="btn btn-primary" type="button" onclick="limpia_consulta();oculta_pantalla('consulta_articulo');muestra_pantalla('comprar')"><i class="fas fa-shopping-cart"></i> Artículos en el carrito</button>
+					</div>
+				  </nav>
+			</header>
+			<div class="container">
+				<br>
+				<h2 style="text-align:center">Consulte la existencia de su artículo</h2><br>
+			
+			Nombre *<br>
+			<input class="form-control" type="text" id="consulta_nombre" value=""/><br>
+			Descripción *<br>
+			<input class="form-control" type="text" id="consulta_descripcion" value=""/><br>
+			<br>
+			<br>
+			<div class="container">
+				<div class="row justify-content-end">
+					<button class="btn btn-primary col-lg-2" type="button" onclick="consulta_articulo()">Buscar articulo</button>&nbsp;&nbsp;
+					<button class="btn btn-primary col-lg-2" type="button" onclick="limpia_consulta()">Limpiar pantalla</button>&nbsp;&nbsp;
+					<button class="btn btn-info col-lg-2" type="button" onclick="cierra_consulta_articulo()"><i class="fas fa-reply"></i> Regresar</button>&nbsp;
+				</div>
+			</div>
+			</div>
+			<br><br><br><br><br><br><br><br>
+			<footer class="bg-dark text-center text-lg-start">
+				<!-- Copyright -->
+				<div class="text-center text-white p-3">
+				  © 2022:
+				  <span class="text-white"><strong></strong></span>
+				</div>
+				<!-- Copyright -->
+			</footer>
+		</div> 
+
+		<!-- COMPRA DE ARTÍCULOS-->
+		<div id="compra_articulo" style="display:none">
+
+			<h2 style="text-align:center">Compra de artículos</h2><br>
+	
+			<!-- <div class="container">
+			Nombre *<br>
+			<input class="form-control" type="text" id="compra_nombre" value=""/><br>
+			Descripción *<br>
+			<input class="form-control" type="text" id="compra_descripcion" value=""/><br>
+			Precio *<br>
+			<input class="form-control" type="text" id="compra_precio" value="" /><br>
+			Cantidad *<br>
+			<input class="form-control" type="text" id="compra_cantidad" value=""/>
+			<br>
+			<br>
+			<img class="col-sm-2" id="compra_imagen" src="/" alt="Agregar producto"></img><br><br>
+			<input  class="form-control-lg-file col-auto" type="file" onchange="readSingleFile(files,get('compra_imagen'))" multiple="false" accept="image/*"/><br>
+			</div> -->
+		</div>
+
+		<div id="btn-compra" style="display:none">
+			<button type="button" onclick="compra()" style="width:250px;height:40px">Comprar</button></br>
+			<button type="button" onclick="cierra_pantalla_consulta()" style="width:250px;height:40px"><i class="fas fa-reply"></i> Regresar</button></br>
+
+		</div>
+
+		<!-- BORRAR ARTÍCULO-->
+		<div id="borrar_articulo" style="display:none">
+			<h2 style="text-align:center">Borra usuario</h2>
+			Email *<br>
+			<input type="email" id="borra_email" value="" style="width:250px"/><br><br>
+			<button type="button" onclick="borra()" style="width:250px;height:40px">Borrar usuario</button></br>
+			<button type="button" onclick="oculta_pantalla('borrar_articulo')" style="width:250px;height:40px"><i class="fas fa-reply"></i> Regresar</button></br>
+		</div>
+	
+
+	<div id="menu">
+
+		<header>
+			<nav class="navbar navbar-dark bg-dark">
+				<span class="text-white navbar-xl-brand mb-0 h1"> Comercio Electrónico</span>
+				<div class="d-flex justify-content-end">
+				<button class="btn btn-primary" type="button" onclick="limpia_alta();muestra_pantalla('menu')"><i class="fas fa-store"></i> Inicio</button>&nbsp;
+				<button class="btn btn-primary" type="button" onclick="limpia_alta();muestra_pantalla('alta_articulo')"><i class="fas fa-upload"></i> Captura de artículo</button>&nbsp;
+				<button class="btn btn-primary" type="button" onclick="limpia_consulta();muestra_pantalla('consulta_articulo')"><i class="fas fa-shopping-bag"></i> Compra de artículos</button>&nbsp;
+				<button class="btn btn-primary" type="button" onclick="limpia_consulta();muestra_pantalla('comprar')"><i class="fas fa-shopping-cart"></i> Artículos en el carrito</button>
+				</div>
+			  </nav>
+		</header>
+
+		<div id="carouselExampleSlidesOnly" class="carousel slide" data-ride="carousel">
+			<div class="container">
+				<br>
+			<h1 class="text-xl-center ">Bienvenido</h1>
+			<p class="lead text-center">Se desarrolló un prototipo de un sistema de comercio electrónico utilizando un servicio web estilo REST </p>
+			</div>
+			<div class="carousel-inner">
+			  <div class="carousel-item active">
+				<img class="d-block w-100" src="https://img.freepik.com/vector-premium/mano-que-sostiene-telefono-inteligente-es-pantalla-blanca-vacia-telefono-movil-ilustracion-vectorial_157650-196.jpg?w=2000" alt="First slide">
+			  </div>
+			</div>
+		  </div>
+
+		<footer class="bg-dark text-center text-lg-start">
+			<!-- Copyright -->
+			<div class="text-center text-white p-3">
+			  © 2022:
+			  <span class="text-white"><strong></strong></span>
+			</div>
+			<!-- Copyright -->
+		</footer>
+	</div>
+	</body>
+</html>
